@@ -75,25 +75,29 @@ def product_info():
 @app.route('/check_stock', methods=['POST'])
 def check_stock():
     # Get the XML request data
-    xml_data = request.data  # Get the raw XML data
-    print(xml_data)
+    xml_data = request.data.decode('utf-8')
+
     try:
-        root = etree.fromstring(xml_data.encode('utf-8'))
+        # Parse the incoming XML data
+        parser = etree.XMLParser(load_dtd=True, resolve_entities=True)
+        root = etree.fromstring(xml_data.encode('utf-8'), parser=parser)
 
         # Extract the product ID from the XML
         product_id = root.find('product_id').text
-        print(product_id)
-        # Here you can process the XXE entity
-        xxe_content = root.text if root.tag == 'xxe' else 'No XXE detected'
-        product = Product.query.filter_by(id=product_id).first()
-        product_stock = Product.query.filter_by(id=product_id).first()
-        print(product)
-        # Simulate stock checking (or query the database)
-        stock_info = f"Stock for Product ID {product_id}:  {product.stock} units left. XXE Content: {xxe_content}"
+
+        # Query the database to find the product by ID
+        product = Product.query.get(product_id)
+
+        if product:
+            # Return the actual stock value from the database
+            stock_info = f"Stock for Product ID {product_id}: {product.stock} units left."
+        else:
+            stock_info = f"Product with ID {product_id} not found."
+
         return stock_info, 200
 
     except etree.XMLSyntaxError as e:
-        print("Parse Error:", e)  # Log thue error for debugging
+        print("Parse Error:", e)
         return "Error parsing XML", 400
        
 
